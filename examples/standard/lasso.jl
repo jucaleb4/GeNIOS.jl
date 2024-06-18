@@ -55,7 +55,17 @@ fconj(x) = 0.5*x^2
 λ1 = λ
 λ2 = 0.0
 solver = GeNIOS.MLSolver(f, λ1, λ2, A, b; fconj=fconj)
-res = solve!(solver; options=GeNIOS.SolverOptions(relax=true, use_dual_gap=true, dual_gap_tol=1e-3, verbose=true))
+# res = solve!(solver; options=GeNIOS.SolverOptions(relax=true, use_dual_gap=true, dual_gap_tol=1e-3, verbose=true))
+res = solve!(
+    solver; 
+    options=GeNIOS.SolverOptions(
+        use_dual_gap=true, 
+        dual_gap_tol=1e-16, 
+        verbose=true,
+        max_iters=100,
+    ),
+    prob_name="lasso",
+)
 rmse = sqrt(1/m*norm(A*solver.zk - b, 2)^2)
 println("Final RMSE: $(round(rmse, digits=8))")
 

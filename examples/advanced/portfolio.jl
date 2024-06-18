@@ -211,5 +211,15 @@ solver = GeNIOS.GenericSolver(
     I, zeros(n);            # M, c: Mx - z = c
     params=params
 )
-res = solve!(solver)
+# res = solve!(solver)
+res = solve!(
+    solver; 
+    options=GeNIOS.SolverOptions(
+        use_dual_gap=true, 
+        dual_gap_tol=1e-16, 
+        verbose=true,
+        max_iters=100,
+    ),
+    prob_name="portfolio",
+)
 println("Optimal value: $(round(solver.obj_val, digits=4))")

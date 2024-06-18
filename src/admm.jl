@@ -1,3 +1,9 @@
+using Debugger
+using MatrixMarket
+import CSV
+import Tables
+import Printf
+
 function build_preconditioner!(solver::Solver, options::SolverOptions)
     !options.precondition && return 0.0
     options.init_sketch_size = solver.data.n ≥ 1_000 ? options.init_sketch_size : solver.data.n ÷ 20
@@ -440,7 +446,8 @@ end
 function solve!(
     solver::Solver;
     options::SolverOptions=SolverOptions(),
-    use_lbfgs_ml=false
+    use_lbfgs_ml=false,
+    prob_name=nothing
 )
     check_options(options)
     setup_time_start = time_ns()
@@ -456,6 +463,7 @@ function solve!(
     solver.loss = Inf
     solver.rp_norm = Inf
     solver.rd_norm = Inf
+    @bp
     solver.xk .= zeros(n)
     solver.Mxk .= zeros(m)
     solver.zk .= zeros(m)
@@ -492,6 +500,20 @@ function solve!(
     iter_fmt = iter_format(solver, options)
     options.verbose && print_iter_func(iter_fmt, iter_data(solver, options, 0, 0.0))
 
+    # --- Save matrix ---
+    save_data = prob_name !== nothing
+    if(save_data)
+        root_path = abspath(joinpath("data", prob_name))
+        !isdir(root_path) && mkpath(root_path)
+        # convert if necessary
+        if(typeof(A) == Matrix{eltype(A)})
+            spA = sparse(solver.data.Adata)
+        else
+            spA = @views solver.data.Adata
+        end
+        mmwrite(joinpath(root_path, "Adata.mtx"), spA)
+    end
+
     # --------------------------------------------------------------------------
     # --------------------- ITERATIONS -----------------------------------------
     # --------------------------------------------------------------------------
@@ -500,6 +522,13 @@ function solve!(
         (time_ns() - solve_time_start) / 1e9 < options.max_time_sec
         
         t += 1
+
+        # --- Save weighted diagonal ---
+        if save_data
+            fname_t = joinpath(root_path, @sprintf("w_%i.csv", t))
+            w = @. solver.data.d2f(solver.pred)
+            CSV.write(fname_t, Tables.table(w), writeheader=false)
+        end
 
         # --- ADMM iterations ---
         if !use_lbfgs_ml

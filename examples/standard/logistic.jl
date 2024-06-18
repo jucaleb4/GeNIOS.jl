@@ -13,6 +13,7 @@ $$
 
 using GeNIOS
 using Random, LinearAlgebra, SparseArrays
+using Debugger
 
 #=
 ## Generating the problem data
@@ -62,7 +63,16 @@ f2conj(x::T) where {T} = (one(T) - x) * log(one(T) - x) + x * log(x)
 λ1 = λ
 λ2 = 0.0
 solver = GeNIOS.MLSolver(f2, λ1, λ2, A, b; fconj=f2conj)
-res = solve!(solver; options=GeNIOS.SolverOptions(use_dual_gap=true, dual_gap_tol=1e-4, verbose=true))
+@enter res = solve!(
+    solver; 
+    options=GeNIOS.SolverOptions(
+        use_dual_gap=true, 
+        dual_gap_tol=1e-16, 
+        verbose=true,
+        max_iters=100,
+    ),
+    # prob_name="logistic_regression",
+)
 
 #=
 ## Results

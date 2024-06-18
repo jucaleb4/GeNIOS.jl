@@ -59,6 +59,16 @@ However, we can supply the conjugate function if we want to use the duality gap.
 =#
 fconj(y) = y > 1 ? Inf : y^2/2.0
 solver = GeNIOS.MLSolver(f, λ1, λ2, A, b; fconj=fconj)
-res = solve!(solver; options=GeNIOS.SolverOptions(use_dual_gap=true))
+# res = solve!(solver; options=GeNIOS.SolverOptions(use_dual_gap=true))
+res = solve!(
+    solver; 
+    options=GeNIOS.SolverOptions(
+        use_dual_gap=true, 
+        dual_gap_tol=1e-16, 
+        verbose=true,
+        max_iters=100,
+    ),
+    prob_name="huber",
+)
 rmse = sqrt(1/N*norm(A*solver.zk - b, 2)^2)
 println("Final RMSE: $(round(rmse, digits=8))")
