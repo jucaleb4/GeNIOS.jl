@@ -510,13 +510,6 @@ function solve!(
         # root_path = abspath(joinpath("data", prob_name))
         root_path = joinpath("/pscratch/sd/c/cju33/data", prob_name)
         !isdir(root_path) && mkpath(root_path)
-        # convert if necessary
-        if(typeof(A) == Matrix{eltype(A)})
-            spA = sparse(solver.data.Adata)
-        else
-            spA = @views solver.data.Adata
-        end
-        mmwrite(joinpath(root_path, "Adata.mtx"), spA)
     end
 
     # --------------------------------------------------------------------------
