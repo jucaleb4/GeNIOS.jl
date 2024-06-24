@@ -252,6 +252,7 @@ function update_x!(
     T = eltype(solver.xk)
 
     # update linear operator, i.e., ∇²f(xᵏ)
+    @bp
     update!(solver.lhs_op.Hf_xk, solver)
 
     # RHS = ∇²f(xᵏ)xᵏ - ∇f(xᵏ) - ρAᵀ(zᵏ - c + uᵏ)
@@ -275,8 +276,9 @@ function update_x!(
     !isinf(solver.rp_norm) && warm_start!(linsys_solver, solver.xk)
     cg!(
         linsys_solver, solver.lhs_op, solver.cache.rhs;
-        M=solver.P, rtol=linsys_tol
+        M=solver.P, rtol=linsys_tol, itmax=100*size(solver.lhs_op)[2],
     )
+
     !issolved(linsys_solver) && error("CG failed")
     
     update_δx!(linsys_solver.x, solver, options)
@@ -463,7 +465,6 @@ function solve!(
     solver.loss = Inf
     solver.rp_norm = Inf
     solver.rd_norm = Inf
-    @bp
     solver.xk .= zeros(n)
     solver.Mxk .= zeros(m)
     solver.zk .= zeros(m)
@@ -477,6 +478,7 @@ function solve!(
     BLAS.set_num_threads(options.num_threads)
 
     # --- Setup Linear System Solver ---
+    rhos = []
     solver.ρ = options.ρ0
     solver.lhs_op.ρ[1] = options.ρ0
     precond_time = build_preconditioner!(solver, options)
@@ -500,10 +502,13 @@ function solve!(
     iter_fmt = iter_format(solver, options)
     options.verbose && print_iter_func(iter_fmt, iter_data(solver, options, 0, 0.0))
 
-    # --- Save matrix ---
+    # --- CALEB: Save matrix ---
     save_data = prob_name !== nothing
+    # if(save_data)
+    # Do not save since we load in the matrix
     if(save_data)
-        root_path = abspath(joinpath("data", prob_name))
+        # root_path = abspath(joinpath("data", prob_name))
+        root_path = joinpath("/pscratch/sd/c/cju33/data", prob_name)
         !isdir(root_path) && mkpath(root_path)
         # convert if necessary
         if(typeof(A) == Matrix{eltype(A)})
@@ -523,14 +528,24 @@ function solve!(
         
         t += 1
 
-        # --- Save weighted diagonal ---
+        # --- CALEB: Save weighted diagonal ---
         if save_data
+            # wk
             fname_t = joinpath(root_path, @sprintf("w_%i.csv", t))
             w = @. solver.data.d2f(solver.pred)
             CSV.write(fname_t, Tables.table(w), writeheader=false)
+
+            # xk
+            fname_t = joinpath(root_path, @sprintf("x_%i.csv", t))
+            CSV.write(fname_t, Tables.table(solver.xk), writeheader=false)
+
+            # zk
+            fname_t = joinpath(root_path, @sprintf("z_%i.csv", t))
+            CSV.write(fname_t, Tables.table(solver.zk), writeheader=false)
         end
 
         # --- ADMM iterations ---
+        push!(rhos, solver.ρ)
         if !use_lbfgs_ml
             time_linsys = update_x!(solver, options, linsys_solver, t)
         else
@@ -581,6 +596,12 @@ function solve!(
             update_preconditioner!(solver, options)
         end
 
+    end
+
+    # --- Save all rhos ---
+    if save_data
+        fname_t = joinpath(root_path, "rhos.csv")
+        CSV.write(fname_t, Tables.table(rhos), writeheader=false)
     end
 
     # --- Print Final Iteration ---
