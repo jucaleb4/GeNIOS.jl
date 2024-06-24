@@ -139,6 +139,10 @@ function obj_val!(solver::MLSolver, options::SolverOptions)
     solver.loss = sum(solver.data.f, solver.pred)
     solver.obj_val = solver.loss + 
         solver.λ1*norm(solver.zk, 1) + (solver.λ2/2)*sum(abs2, solver.zk)
+
+    # --- CALEB: Re-compute pred=Axk-b ---
+    mul!(solver.pred, solver.data.Adata, solver.xk)
+    solver.pred .-= solver.data.bdata
 end
 
 function obj_val!(solver::ConicSolver, options::SolverOptions)

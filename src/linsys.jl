@@ -65,11 +65,6 @@ function RandomizedPreconditioners.NystromSketch(H::MLHessianOperator, r::Int; n
 end
 
 function update!(H::MLHessianOperator, solver)
-    # Re-compute pred=Ax-b
-    mul!(solver.pred, solver.data.Adata, solver.xk)
-    solver.cache.vN .= solver.pred
-    solver.pred .-= solver.data.bdata
-
     @. H.w = solver.data.d2f(solver.pred)
     return nothing
 end
