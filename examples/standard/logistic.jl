@@ -14,10 +14,14 @@ $$
 using GeNIOS
 using Random, LinearAlgebra, SparseArrays
 using Debugger
+using Printf
+import MatrixMarket
+import DelimitedFiles
 
 #=
 ## Generating the problem data
 =#
+"""
 Random.seed!(1)
 N, n = 200, 400
 Ã = sprandn(N, n, 0.2)
@@ -31,7 +35,22 @@ b̃ = sign.(Ã*xstar + 1e-1 * randn(N))
 
 A = Diagonal(b̃) * Ã
 b = zeros(N)
+"""
+matrix = ARGS[1] # "svhn"
+root_path = joinpath("/pscratch", "sd", "c", "cju33", "mtxs")
+A_fname = joinpath(root_path, @sprintf("%s_A_tr.mtx", matrix))
+b_fname = joinpath(root_path, @sprintf("%s_b_tr.csv", matrix))
+!(isfile(A_fname) && isfile(b_fname)) && error(@sprintf("Unknown matrix %s", matrix))
 
+A = MatrixMarket.mmread(A_fname)
+b = vec(DelimitedFiles.readdlm(b_fname, ','))
+
+# We either take the number of rows or double the number of columns
+A = A[1:min(size(A,1), 2*size(A,2)),:]
+b = b[1:size(A,1)]
+
+N, n = size(A,1), size(A,2)
+@printf("m=%i, n=%i\n", N,n)
 λmax = norm(0.5*A'*ones(N), Inf)
 λ = 0.05*λmax
 
@@ -41,8 +60,8 @@ The easiest way to solve this problem is to use our `LogisticSolver` interface.
 =#
 λ1 = λ
 λ2 = 0.0
-solver = GeNIOS.LogisticSolver(λ1, λ2, A, b)
-res = solve!(solver; options=GeNIOS.SolverOptions(use_dual_gap=true, dual_gap_tol=1e-4, verbose=true))
+# solver = GeNIOS.LogisticSolver(λ1, λ2, A, b)
+# res = solve!(solver; options=GeNIOS.SolverOptions(use_dual_gap=true, dual_gap_tol=1e-4, verbose=true))
 
 #=
 ## MLSolver interface
@@ -63,7 +82,7 @@ f2conj(x::T) where {T} = (one(T) - x) * log(one(T) - x) + x * log(x)
 λ1 = λ
 λ2 = 0.0
 solver = GeNIOS.MLSolver(f2, λ1, λ2, A, b; fconj=f2conj)
-@enter res = solve!(
+res = solve!(
     solver; 
     options=GeNIOS.SolverOptions(
         use_dual_gap=true, 
@@ -71,7 +90,7 @@ solver = GeNIOS.MLSolver(f2, λ1, λ2, A, b; fconj=f2conj)
         verbose=true,
         max_iters=100,
     ),
-    # prob_name="logistic_regression",
+    prob_name=@sprintf("logistic_regression_%s", matrix),
 )
 
 #=
