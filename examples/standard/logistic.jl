@@ -88,7 +88,7 @@ res = solve!(
         use_dual_gap=true, 
         dual_gap_tol=1e-16, 
         verbose=true,
-        max_iters=100,
+        max_iters=200,
     ),
     prob_name=@sprintf("logistic_regression_%s", matrix),
 )
