@@ -139,6 +139,10 @@ function obj_val!(solver::MLSolver, options::SolverOptions)
     solver.loss = sum(solver.data.f, solver.pred)
     solver.obj_val = solver.loss + 
         solver.λ1*norm(solver.zk, 1) + (solver.λ2/2)*sum(abs2, solver.zk)
+
+    # --- CALEB: Re-compute pred=Axk-b ---
+    mul!(solver.pred, solver.data.Adata, solver.xk)
+    solver.pred .-= solver.data.bdata
 end
 
 function obj_val!(solver::ConicSolver, options::SolverOptions)
@@ -200,9 +204,10 @@ function compute_rhs!(solver::MLSolver, options::SolverOptions)
     
     # Recompute pred = Ax - b with xᵏ instead of zᵏ (used in residuals)
     # TODO: maybe store pred w xk and pred with zk separately? 
-    mul!(solver.pred, solver.data.Adata, solver.xk)
-    solver.cache.vN .= solver.pred
-    solver.pred .-= solver.data.bdata
+    # NOTE: Removed below; update pred earlier in update!(MLSolver, ...)
+    # mul!(solver.pred, solver.data.Adata, solver.xk)
+    # solver.cache.vN .= solver.pred
+    # solver.pred .-= solver.data.bdata
 
     # compute first term (hessian)
     # λ₂xᵏ from the Hessian and λ₂xᵏ from the gradient cancel out
@@ -252,7 +257,6 @@ function update_x!(
     T = eltype(solver.xk)
 
     # update linear operator, i.e., ∇²f(xᵏ)
-    @bp
     update!(solver.lhs_op.Hf_xk, solver)
 
     # RHS = ∇²f(xᵏ)xᵏ - ∇f(xᵏ) - ρAᵀ(zᵏ - c + uᵏ)
