@@ -6,10 +6,11 @@ signal into a sum of several components.
 =#
 using GeNIOS
 using Random, LinearAlgebra, SparseArrays
-using Plots
+# using Plots
 using ProximalOperators: TotalVariation1D, prox!
 using BandedMatrices
 using LinearMaps
+using Debugger
 
 #=
 ## Generating the problem data
@@ -32,6 +33,7 @@ s1 = 0.1 * randn(T)
 X = hcat(s1, s2, s3)
 y = sum(X, dims=2) |> vec
 
+"""
 sig_plt = plot(
     t, 
     y,
@@ -52,6 +54,7 @@ plot!(sig_plt,
     lw=3,
     color=:royalblue
 )
+"""
 
 
 #=
@@ -191,7 +194,7 @@ solver = GeNIOS.GenericSolver(
     M, c;                   # M, c: Mx + z = c
     params=params
 )
-res = solve!(solver, options=GeNIOS.SolverOptions(eps_abs=1e-5, print_iter=100))
+@enter res = solve!(solver, options=GeNIOS.SolverOptions(eps_abs=1e-5, print_iter=100))
 
 x1 = solver.xk[1:T]
 x2 = solver.xk[T+1:2T]
@@ -201,6 +204,7 @@ x3 = solver.xk[2T+1:end];
 #=
 ## Plotting the results
 =#
+"""
 res_plt = plot(
     t, 
     y,
@@ -292,3 +296,4 @@ plot!(p3,
     color=:coral1
 )
 decomp_plt = plot(p1, p2, p3, layout=(3,1))
+"""
