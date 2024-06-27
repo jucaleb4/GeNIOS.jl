@@ -133,7 +133,9 @@ end
 # NOTE: uses zk for f
 function obj_val!(solver::MLSolver, options::SolverOptions)
     # pred = Ax - b
-    mul!(solver.pred, solver.data.Adata, solver.zk)
+    # mul!(solver.pred, solver.data.Adata, solver.zk)
+    # NOTE: Changed back to xk
+    mul!(solver.pred, solver.data.Adata, solver.xk)
     solver.pred .-= solver.data.bdata
     
     solver.loss = sum(solver.data.f, solver.pred)
@@ -463,7 +465,6 @@ function solve!(
     solver.loss = Inf
     solver.rp_norm = Inf
     solver.rd_norm = Inf
-    @bp
     solver.xk .= zeros(n)
     solver.Mxk .= zeros(m)
     solver.zk .= zeros(m)

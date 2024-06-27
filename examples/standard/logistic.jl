@@ -19,7 +19,7 @@ using Debugger
 ## Generating the problem data
 =#
 Random.seed!(1)
-N, n = 200, 400
+N, n = 400, 200
 Ã = sprandn(N, n, 0.2)
 Ã .-= sum(Ã, dims=1) ./ N
 normalize!.(eachcol(Ã))
@@ -30,7 +30,8 @@ xstar[inds] .= randn(length(inds))
 b̃ = sign.(Ã*xstar + 1e-1 * randn(N))
 
 A = Diagonal(b̃) * Ã
-b = zeros(N)
+# b = zeros(N)
+b = Float64.(rand(N) .≥ 0.5)
 
 λmax = norm(0.5*A'*ones(N), Inf)
 λ = 0.05*λmax
@@ -63,15 +64,18 @@ f2conj(x::T) where {T} = (one(T) - x) * log(one(T) - x) + x * log(x)
 λ1 = λ
 λ2 = 0.0
 solver = GeNIOS.MLSolver(f2, λ1, λ2, A, b; fconj=f2conj)
-@enter res = solve!(
+res = solve!(
     solver; 
     options=GeNIOS.SolverOptions(
-        use_dual_gap=true, 
-        dual_gap_tol=1e-16, 
+        # use_dual_gap=true, 
+        # dual_gap_tol=1e-16, 
+        eps_abs=1e-16,
+        eps_rel=1e-16,
+        eps_inf=1e-16,
         verbose=true,
         max_iters=100,
     ),
-    # prob_name="logistic_regression",
+    prob_name="logistic_regression",
 )
 
 #=
